@@ -23,7 +23,7 @@ load_dotenv()
 def get_config_value(key: str, default="__REQUIRED__", var_type=str):
     """Get env var and cast to the specified type."""
     value = os.getenv(key)
-    
+
     # If not set
     if value is None:
         if default == "__REQUIRED__":
@@ -44,7 +44,7 @@ def get_config_value(key: str, default="__REQUIRED__", var_type=str):
         else:
             # String/other: return default as is
             return default
-    
+
     # Cast provided value
     if var_type == bool:
         # Bool: 'true', '1', 'yes', 'on' => True
@@ -108,13 +108,25 @@ graph_analysis_max_token_size = get_config_value("GRAPH_ANALYSIS_MAX_TOKEN_SIZE"
 # ==============================================================================
 # Embedding Settings
 # ==============================================================================
+embedding_model_provider = get_config_value("EMBEDDING_MODEL_PROVIDER", str)  # "huggingface" or "openai"
+embedding_model_openai_api_key = get_config_value("EMBEDDING_MODEL_OPENAI_API_KEY", None, str)
+embedding_model_openai_base_url = get_config_value("EMBEDDING_MODEL_OPENAI_BASE_URL", None, str)
 embedding_model_name = get_config_value("EMBEDDING_MODEL_NAME", "BAAI/bge-m3", str)
+embedding_tokenizer_model_name = get_config_value("EMBEDDING_TOKENIZER_MODEL_NAME", "BAAI/bge-m3", str)
 embedding_dim = get_config_value("EMBEDDING_DIM", "1024", int)
 embedding_max_token_size = get_config_value("EMBEDDING_MAX_TOKEN_SIZE", "2048", int)
+
+if embedding_model_provider == "openai" and not (embedding_model_openai_api_key or embedding_model_openai_base_url):
+    raise ValueError(f"Embedding model provider '{embedding_model_provider}' is selected but neither EMBEDDING_MODEL_OPENAI_API_KEY nor EMBEDDING_MODEL_OPENAI_BASE_URL is set.")
 
 # Optional Hugging Face Hub token (for authenticated/private models)
 huggingface_hub_token = get_config_value("HUGGINGFACE_HUB_TOKEN", None, str)
 
+use_hf_home_in_local = get_config_value("USE_HF_HOME_IN_LOCAL", None, bool)
+if use_hf_home_in_local:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    hf_path = os.path.join(current_dir, os.pardir, os.pardir, "hf_cache")
+    os.environ['HF_HOME'] = hf_path
 # ==============================================================================
 # Performance Settings
 # ==============================================================================
@@ -181,7 +193,7 @@ no_process_file_list = no_process_list_env.split(",") if no_process_list_env els
     "__pycache__",
     ".git",
     ".github",
-    ".venv", 
+    ".venv",
     "node_modules",
     ".DS_Store",
     "Thumbs.db",
@@ -267,7 +279,7 @@ go_lang = Language(tsgo.language())
 # Ruby definition nodes to extract
 ruby_definition_dict = {
     "class": "constant",
-    "module": "constant", 
+    "module": "constant",
     "method": "identifier",
     "singleton_method": "identifier"
 }
@@ -431,6 +443,9 @@ merge_enabled = get_config_value("MERGE_ENABLED", "true", bool)
 # Cosine similarity threshold for merging
 merge_score_threshold = get_config_value("MERGE_SCORE_THRESHOLD", "0.95", float)
 
+# Batch size for embedding processing
+embedding_batch_size = get_config_value("EMBEDDING_BATCH_SIZE", "100", int)
+
 # Entity Exclusion Patterns
 _DEFAULT_MAGIC_METHODS = [
     '__init__', '__new__', '__del__', '__call__', '__str__', '__repr__',
@@ -449,7 +464,7 @@ magic_methods_exclude_list = [item.strip() for item in magic_methods_env.split("
 _DEFAULT_GENERIC_TERMS = [
     'data', 'result', 'value', 'item', 'element', 'object', 'instance',
     'index', 'key', 'name', 'text', 'string', 'number', 'count', 'size',
-    'length', 'width', 'height', 'temp', 'tmp', 'test', 'example', 
+    'length', 'width', 'height', 'temp', 'tmp', 'test', 'example',
     'sample', 'demo', 'main', 'app', 'init', 'config', 'util', 'helper',
     'manager', 'handler', 'controller', 'service'
 ]

@@ -290,4 +290,7 @@ async def graph_query(user_query: str, storage_name: str = "storage") -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    # mcp.run(transport="stdio")
+    mcp.settings.host="127.0.0.1"
+    mcp.settings.port=8888
+    mcp.run(transport="streamable-http")
