@@ -1,31 +1,57 @@
-# Repo GraphRAG MCP Server
+# LightRAGCoder
 
-Repo GraphRAG MCP Server is an MCP (Model Context Protocol) server that uses LightRAG and Tree-sitter to build a knowledge graph from code and text-based documents (text-only; PDFs/Word/Excel are not parsed) in a repository/directory, and leverages it for Q&A and implementation planning.
-It provides tools for graph building (`graph_create`), implementation planning (`graph_plan`), and Q&A (`graph_query`).
+LightRAGCoder is an MCP (Model Context Protocol) server that uses LightRAG and Tree-sitter to build a knowledge graph from code and text-based documents (text-only; PDFs/Word/Excel are not parsed) in a repository/directory, and leverages it for Q&A and implementation planning.
+It provides tools for graph update (`graph_update`), implementation planning (`graph_plan`), and Q&A (`graph_query`).
 
-- 📊 Knowledge graph creation (`graph_create`): Analyze code/documents to build a knowledge graph and embedding index (supports incremental updates)
+- 📊 Knowledge graph update (`graph_update`): Analyze code/documents to incremental updates a knowledge graph and embedding index
 - 🔧 Implementation planning (`graph_plan`): Output implementation plans and concrete change steps for modification/addition requests based on the knowledge graph (optionally combined with vector search)
 - 🔍 Q&A (`graph_query`): Answer questions based on the knowledge graph (optionally combined with vector search)
 
 ## Table of Contents
 
-- [🚀 Quick Start](#-quick-start)
-  - [1. Installation](#1-installation)
-  - [2. Environment Setup](#2-environment-setup)
-  - [3. Environment Variables (LLM Setup)](#3-environment-variables-llm-setup)
-  - [4. MCP Client Setup](#4-mcp-client-setup)
-  - [5. Usage](#5-usage)
-- [⚙️ Configuration Options](#%EF%B8%8F-configuration-options)
-  - [LLM Providers](#llm-providers)
-  - [Embedding Model](#embedding-model)
-  - [Planning/Query Settings for graph_plan and graph_query](#planningquery-settings-for-graph_plan-and-graph_query)
-  - [Entity Merge](#entity-merge)
-  - [Detailed Environment Variables](#detailed-environment-variables)
-- [🧬 Supported Languages](#-supported-languages-v020)
-- [🏗️ MCP Structure](#-mcp-structure)
-- [🛠️ Standalone Execution](#%EF%B8%8F-standalone-execution)
-- [🙏 Acknowledgments](#-acknowledgments)
-- [📄 License](#-license)
+- [LightRAGCoder](#lightragcoder)
+  - [Table of Contents](#table-of-contents)
+  - [🚀 Quick Start](#-quick-start)
+    - [Prerequisites](#prerequisites)
+  - [📦 CLI Tool - LightRAGCoder](#-cli-tool---lightragcoder)
+    - [Available Commands](#available-commands)
+      - [`mcp` - Run the LightRAGCoder Server](#mcp---run-the-lightragcoder-server)
+      - [`create` - Create/Update GraphRAG Storage manually](#create---createupdate-graphrag-storage-manually)
+      - [`merge` - Merge Entities in GraphRAG Storage manually](#merge---merge-entities-in-graphrag-storage-manually)
+    - [Examples](#examples)
+    - [1. Installation](#1-installation)
+    - [2. Environment Setup](#2-environment-setup)
+    - [3. Environment Variables](#3-environment-variables)
+      - [Example: Using OpenAI models](#example-using-openai-models)
+    - [4. MCP Client Setup](#4-mcp-client-setup)
+      - [VS Code GitHub Copilot Extensions](#vs-code-github-copilot-extensions)
+      - [Other MCP Clients](#other-mcp-clients)
+    - [5. Usage](#5-usage)
+      - [`graph_update` - Update Knowledge Graph](#graph_update---update-knowledge-graph)
+      - [`graph_plan` - Implementation Support](#graph_plan---implementation-support)
+      - [`graph_query` - Q\&A](#graph_query---qa)
+  - [⚙️ Configuration Options](#️-configuration-options)
+    - [LLM Providers](#llm-providers)
+    - [Embedding Providers](#embedding-providers)
+      - [Supported Providers](#supported-providers)
+      - [Default Configuration](#default-configuration)
+      - [Provider-Specific Configuration](#provider-specific-configuration)
+        - [Hugging Face](#hugging-face)
+        - [OpenAI](#openai)
+      - [Notes](#notes)
+    - [Planning/Query Settings for `graph_plan` and `graph_query`](#planningquery-settings-for-graph_plan-and-graph_query)
+      - [Retrieval/Search Modes](#retrievalsearch-modes)
+      - [Token Budgets (Input-side)](#token-budgets-input-side)
+    - [Entity Merge](#entity-merge)
+    - [Detailed Environment Variables](#detailed-environment-variables)
+  - [🧬 Supported Languages (v0.2.2)](#-supported-languages-v022)
+  - [🏗️ MCP Structure](#️-mcp-structure)
+  - [🛠️ Standalone Execution](#️-standalone-execution)
+    - [Using the CLI Tool (Recommended)](#using-the-cli-tool-recommended)
+      - [Build Knowledge Graph](#build-knowledge-graph)
+      - [Merge Entities](#merge-entities)
+  - [🙏 Acknowledgments](#-acknowledgments)
+  - [📄 License](#-license)
 
 ## 🚀 Quick Start
 
@@ -35,12 +61,65 @@ It provides tools for graph building (`graph_create`), implementation planning (
 - [uv](https://github.com/astral-sh/uv) package manager
 - Credentials for your chosen LLM provider (set the required environment variables; see the LLM Providers section below)
 
-### 1. Installation
+## 📦 CLI Tool - LightRAGCoder
+
+`LightRAGCoder` is a command-line interface that provides access to the core functionalities of LightRAGCoder. It offers three main commands:
+
+### Available Commands
+
+#### `mcp` - Run the LightRAGCoder Server
+
+Start the MCP (Model Context Protocol) server to interact with MCP clients like Claude Code or VS Code GitHub Copilot Extensions. Note: Requires an existing storage directory (create one first using the `create` command).
 
 ```bash
+LightRAGCoder mcp --source-dir <directory_paths> --storage-dir <storage_directory> --mode <transport_mode>
+```
+
+- `--source-dir`: Comma-separated list of document or code directories to analyze (required)
+- `--storage-dir`: Storage directory path (required)
+- `--mode`: Server transport mode (`stdio` or `streamable-http`, default: `stdio`)
+
+#### `create` - Create/Update GraphRAG Storage manually
+
+Analyze the target repository/directory and build a knowledge graph and vector embedding index.
+
+```bash
+LightRAGCoder create --source-dir <directory_paths> --storage-dir <storage_directory>
+```
+
+- `--source-dir`: Comma-separated list of document or code directories to analyze (required)
+- `--storage-dir`: Storage directory path (required)
+
+#### `merge` - Merge Entities in GraphRAG Storage manually
+
+Merge entities in an existing GraphRAG storage based on semantic similarity.
+
+```bash
+LightRAGCoder merge --storage-dir <storage_directory>
+```
+
+- `--storage-dir`: Storage directory path (required)
+
+### Examples
+
+```bash
+# Run MCP server with multiple source directories
+LightRAGCoder mcp --source-dir /path/to/code,/path/to/docs --storage-dir /path/to/storage
+
+# Create a new knowledge graph
+LightRAGCoder create --source-dir /path/to/my/repository --storage-dir my_project_storage
+
+# Merge entities in an existing storage
+LightRAGCoder merge --storage-dir my_project_storage
+```
+
+### 1. Installation
+
+Download pre_build version or clone sourc code and run in uv evnironment
+```bash
 # Clone from GitHub
-git clone https://github.com/yumeiriowl/repo-graphrag-mcp.git
-cd repo-graphrag-mcp
+git clone https://github.com/MachineXu/LightRAGCoder.git
+cd LightRAGCoder
 
 # Install dependencies
 uv sync
@@ -56,45 +135,35 @@ cp .env.example .env
 nano .env  # or any editor
 ```
 
-### 3. Environment Variables (LLM Setup)
+### 3. Environment Variables
 
 Configure settings in the `.env` file:
 
-#### Example: Using Anthropic models
+#### Example: Using OpenAI models
 ```bash
 # LLM provider for graph creation
-GRAPH_CREATE_PROVIDER=anthropic  # or openai, gemini, azure_openai
+GRAPH_CREATE_PROVIDER=openai  # or anthropic, gemini, azure_openai
 
 # Provider for planning and Q&A
-GRAPH_ANALYSIS_PROVIDER=anthropic # or openai, gemini, azure_openai
+GRAPH_ANALYSIS_PROVIDER=openai # or anthropic, gemini, azure_openai
 
 # API keys (set the variables corresponding to your chosen provider)
-ANTHROPIC_API_KEY=your_anthropic_api_key # or openai, gemini, azure_openai
-
-# AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-# AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-# AZURE_API_VERSION=azure_openai_api_version
-
-# OPENAI_API_KEY=your_openai_api_key
-# OPENAI_BASE_URL=http://localhost:1234/v1  # For LM Studio or other OpenAI-compatible local servers
-
-# GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key # or anthropic, gemini, azure_openai
 
 # LLM model for graph creation
-GRAPH_CREATE_MODEL_NAME=claude-3-5-haiku-20241022
+GRAPH_CREATE_MODEL_NAME=gpt-4o-mini
 
 # LLM model for planning and Q&A
-GRAPH_ANALYSIS_MODEL_NAME=claude-sonnet-4-20250514
+GRAPH_ANALYSIS_MODEL_NAME=gpt-4o
+
+# Embedding model configuration (using OpenAI)
+EMBEDDING_MODEL_PROVIDER=openai
+EMBEDDING_MODEL_NAME=text-embedding-3-small
+EMBEDDING_MODEL_OPENAI_API_KEY=your_openai_api_key
+EMBEDDING_MODEL_OPENAI_BASE_URL=http://localhost:1234/v1  # For LM Studio or other OpenAI-compatible local servers
 ```
 
 ### 4. MCP Client Setup
-
-#### Claude Code
-
-```bash
-claude mcp add repo-graphrag \
--- uv --directory /absolute/path/to/repo-graphrag-mcp run server.py
-```
 
 #### VS Code GitHub Copilot Extensions
 
@@ -102,14 +171,15 @@ claude mcp add repo-graphrag \
 ```json
 {
   "servers": {
-    "repo-graphrag-server": {
+    "lightragcoder-server": {
       "type": "stdio",
-      "command": "uv",
+      "command": "LightRAGCoder",
       "args": [
-        "--directory",
-        "/absolute/path/to/repo-graphrag-mcp",
-        "run",
-        "server.py"
+        "mcp",
+        "--source-dir",
+        "/path/to/code,/path/to/docs",
+        "--storage-dir",
+        "/path/to/storage"
       ]
     }
   }
@@ -122,49 +192,38 @@ Any client that supports the MCP protocol can be used.
 
 ### 5. Usage
 
-The following tools are available in MCP clients. All commands must start with `graph:`.
+The following tools are available in MCP clients.
 
-#### `graph_create` - Build/Update Knowledge Graph
+#### `graph_update` - Update Knowledge Graph
 
-Analyze the target repository/directory and build a knowledge graph and vector embedding index (supports incremental updates). Uses `GRAPH_CREATE_PROVIDER` and `GRAPH_CREATE_MODEL_NAME`.
+Analyze the target repository/directory and update a knowledge graph and vector embedding index (supports incremental updates). Uses `GRAPH_CREATE_PROVIDER` and `GRAPH_CREATE_MODEL_NAME`.
 
 Elements:
-- `graph:` (required)
-- Directory path to analyze (absolute path recommended)
-- Storage name to create (default: "storage")
-
-Examples:
-```
-graph: /absolute/path/to/your/repository my_project
-graph: /absolute/path/to/your/repository my_project graphify
-graph: C:\\projects\\myapp webapp_storage please create storage
-```
+- None
 
 About Incremental Updates:
-When you run `graph_create` again with an existing storage name, only changed/added/deleted files are reanalyzed; others are skipped.
-If you want to rebuild after changing the embedding model or extraction settings (DOC_DEFINITION_LIST, NO_PROCESS_LIST, target extensions, etc.), delete the existing storage or specify a new storage name and recreate with `graph_create` or `standalone_graph_creator.py`.
+When you run `graph_update`, only changed/added/deleted files are reanalyzed; others are skipped.
+If you want to rebuild after changing the embedding model or extraction settings (DOC_DEFINITION_LIST, NO_PROCESS_LIST, target extensions, etc.), delete the existing storage or specify a new storage name and recreate with `create` manually.
 
 Note (Performance):
 The first graph creation takes longer as the number of files increases. As a guideline, if there are more than 1,000 files, consider narrowing the target directory (processing time depends on environment and file sizes).
 Incremental updates reanalyze only the diffs, so the above guideline does not necessarily apply to updates.
 
 Note (First download):
-If the specified embedding model is not cached on first graph creation, it will be automatically downloaded (subsequent runs use the cache).
+If the specified local embedding model is not cached on first graph creation, it will be automatically downloaded (subsequent runs use the cache).
 
 #### `graph_plan` - Implementation Support
 
 Based on the knowledge graph (optionally combined with vector search), provide a detailed implementation plan and instructions so that the MCP client (agent) can perform actual work. Uses `GRAPH_ANALYSIS_PROVIDER` and `GRAPH_ANALYSIS_MODEL_NAME`.
 
 Elements:
-- `graph:` (required)
 - Implementation/modification request
-- Storage name (default: "storage")
 
 Examples:
 ```
-graph: I want to add user authentication my_project
-graph: my_project Add GraphQL support to the REST API
-graph: Improve API performance under high load webapp_storage
+I want to add user authentication my_project
+my_project Add GraphQL support to the REST API
+Improve API performance under high load webapp_storage
 ```
 
 #### `graph_query` - Q&A
@@ -172,15 +231,13 @@ graph: Improve API performance under high load webapp_storage
 Based on the knowledge graph (optionally combined with vector search), answer questions about the target repository/directory. Uses `GRAPH_ANALYSIS_PROVIDER` and `GRAPH_ANALYSIS_MODEL_NAME`.
 
 Elements:
-- `graph:` (required)
 - Question content
-- Storage name (default: "storage")
 
 Examples:
 ```
-graph: Tell me about this project's API endpoints my_project
-graph: my_project Explain the main classes and their roles
-graph: About the database design webapp_storage
+Tell me about this project's API endpoints my_project
+my_project Explain the main classes and their roles
+About the database design webapp_storage
 ```
 
 ## ⚙️ Configuration Options
@@ -198,16 +255,43 @@ Supported providers and required environment variables
 
 Specify the identifiers in `.env` as `GRAPH_CREATE_PROVIDER` / `GRAPH_ANALYSIS_PROVIDER`.
 
-### Embedding Model
+### Embedding Providers
 
-- Default: `BAAI/bge-m3`
-- Compatibility: Supports Hugging Face sentence-transformers compatible models
- - First run: If the specified embedding model is not cached, it will be downloaded automatically. Cache location depends on environment/settings. Download time and disk space depend on model size.
- - Authenticated models: For Hugging Face models that require authentication, set `HUGGINGFACE_HUB_TOKEN` in `.env`.
+LightRAGCoder supports multiple embedding providers with flexible configuration options:
 
-    ```bash
-    HUGGINGFACE_HUB_TOKEN=your_hf_token
-    ```
+#### Supported Providers
+- `huggingface`: Hugging Face sentence-transformers compatible models
+- `openai`: OpenAI or OpenAI-compatible embedding models (including local servers like LM Studio)
+
+#### Default Configuration
+- Default model: `BAAI/bge-m3` (Hugging Face)
+- Default dimension: 1024
+- Default max token size: 2048
+- Default batch size: 10
+
+#### Provider-Specific Configuration
+
+##### Hugging Face
+```bash
+EMBEDDING_MODEL_PROVIDER=huggingface
+EMBEDDING_MODEL_NAME=BAAI/bge-m3
+EMBEDDING_TOKENIZER_MODEL_NAME=BAAI/bge-m3
+HUGGINGFACE_HUB_TOKEN=your_hf_token  # Optional, for authenticated models
+HF_ENDPOINT=https://hf-mirror.com  # Optional, for using a mirror
+```
+
+##### OpenAI
+```bash
+EMBEDDING_MODEL_PROVIDER=openai
+EMBEDDING_MODEL_NAME=text-embedding-3-small
+EMBEDDING_MODEL_OPENAI_API_KEY=your_openai_api_key
+EMBEDDING_MODEL_OPENAI_BASE_URL=http://localhost:1234/v1 
+```
+
+#### Notes
+- **First run**: If the specified embedding model is not cached, it will be downloaded automatically. Download time and disk space depend on model size.
+- **Authenticated models**: For Hugging Face models that require authentication, set `HUGGINGFACE_HUB_TOKEN` in `.env`.
+- **Local OpenAI-compatible servers**: Use `EMBEDDING_MODEL_OPENAI_BASE_URL` to connect to local servers like LM Studio.
 
 ### Planning/Query Settings for `graph_plan` and `graph_query`
 
@@ -270,10 +354,16 @@ Quick reference for all items
 | `MAX_TOTAL_TOKENS` | Overall input-side token budget per planning/query (entities + relations + chunks + system) |
 | `MAX_ENTITY_TOKENS` | Input-side token budget for entity context |
 | `MAX_RELATION_TOKENS` | Input-side token budget for relation context |
-| `EMBEDDING_MODEL_NAME` | Embedding model name (Hugging Face) |
+| `EMBEDDING_BATCH_SIZE` | Batch size for embedding operations |
 | `EMBEDDING_DIM` | Embedding vector dimension |
 | `EMBEDDING_MAX_TOKEN_SIZE` | Max token length for embedding |
+| `EMBEDDING_MODEL_NAME` | Embedding model name |
+| `EMBEDDING_MODEL_OPENAI_API_KEY` | OpenAI API key for embedding model (when provider=openai) |
+| `EMBEDDING_MODEL_OPENAI_BASE_URL` | OpenAI-compatible base URL for embedding model |
+| `EMBEDDING_MODEL_PROVIDER` | Embedding provider (huggingface/openai) |
+| `EMBEDDING_TOKENIZER_MODEL_NAME` | Embedding tokenizer model name |
 | `HUGGINGFACE_HUB_TOKEN` | HF auth token (optional) |
+| `HF_ENDPOINT` | Hugging Face endpoint URL (optional, for using a mirror) |
 | `PARALLEL_NUM` | Parallelism (concurrent LLM/embedding tasks) |
 | `CHUNK_MAX_TOKENS` | Max tokens per chunk |
 | `MAX_DEPTH` | Max Tree-sitter traversal depth |
@@ -316,15 +406,14 @@ The following 13 languages are supported:
 ## 🏗️ MCP Structure
 
 ```
-repo-graphrag-mcp/
+LightRAGCoder/
 ├── README.md
 ├── CHANGELOG.md              # Changelog
 ├── LICENSE                   # License (MIT)
 ├── pyproject.toml            # Package settings
+├── lightragcoder.py          # CLI tool entrypoint
 ├── server.py                 # MCP server entrypoint
 ├── .env.example              # Environment variable template
-├── standalone_graph_creator.py   # Standalone graph builder
-├── standalone_entity_merger.py   # Standalone entity merger
 ├── repo_graphrag/            # Package
 │   ├── config/               # Configuration
 │   ├── initialization/       # Initialization
@@ -340,40 +429,43 @@ repo-graphrag-mcp/
 
 You can also run without an MCP client:
 
-### standalone_graph_creator.py - Build Knowledge Graph
+### Using the CLI Tool (Recommended)
 
-Analyze a repository and create a knowledge graph:
+The recommended way to run standalone operations is using the CLI tool:
+
+#### Build Knowledge Graph
 
 ```bash
-uv run standalone_graph_creator.py <read_dir_path> <storage_name>
+LightRAGCoder create --source-dir <read_dir_path> --storage-dir <storage_directory>
 ```
 
 Examples:
 ```bash
-uv run standalone_graph_creator.py /home/user/myproject my_storage
-uv run standalone_graph_creator.py C:\\projects\\webapp webapp_storage
+LightRAGCoder create --source-dir /home/user/myproject --storage-dir my_storage
+LightRAGCoder create --source-dir C:\projects\webapp\source,C:\projects\webapp\doc --storage-dir webapp_storage
 ```
 
-### standalone_entity_merger.py - Entity Merge
+#### Merge Entities
 
-Merge entities within an existing storage:
+If MERGE_ENABLED=true is set in the .env file, this step is unnecessary as entity merging will be performed automatically during graph creation.
 
 ```bash
-uv run standalone_entity_merger.py <storage_dir_path>
+LightRAGCoder merge --storage-dir <storage_dir_path>
 ```
 
 Examples:
 ```bash
-uv run standalone_entity_merger.py /home/user/myproject/my_storage
-uv run standalone_entity_merger.py C:\\projects\\webapp/webapp_storage
+LightRAGCoder merge --storage-dir /home/user/myproject/my_storage
+LightRAGCoder merge --storage-dir C:\\projects\\webapp/webapp_storage
 ```
 
 Note:
-- The storage directory must be created beforehand by `graph_create` or `standalone_graph_creator.py`.
+- The storage directory must be created beforehand by `LightRAGCoder create`.
 
 ## 🙏 Acknowledgments
 
 This MCP is built on the following libraries:
+- [repo-graphrag-mcp](https://github.com/yumeiriowl/repo-graphrag-mcp) - Base repo
 - [LightRAG](https://github.com/HKUDS/LightRAG) - GraphRAG implementation
 - [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) - Code parsing
 

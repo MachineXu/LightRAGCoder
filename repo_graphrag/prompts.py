@@ -111,3 +111,7 @@ Result:
 STORAGE_NOT_FOUND_ERROR_TEMPLATE = "Error: GraphRAG storage not found.\nStorage name: {storage_name}"
 
 GENERAL_ERROR_TEMPLATE = "An error occurred: {error}"
+
+GRAPH_STORAGE_UPDATE_PROCESSING = """
+GraphRAG storage {storage_name} is updating, plase retry later.
+"""

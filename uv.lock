@@ -1064,6 +1064,77 @@ wheels = [
 ]
 
 [[package]]
+name = "lightragcoder"
+version = "0.3.1"
+source = { editable = "." }
+dependencies = [
+    { name = "anthropic" },
+    { name = "faiss-cpu" },
+    { name = "fastmcp" },
+    { name = "google-genai" },
+    { name = "lightrag-hku" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "python-dotenv" },
+    { name = "sentence-transformers" },
+    { name = "tokenizers" },
+    { name = "torch" },
+    { name = "transformers" },
+    { name = "tree-sitter" },
+    { name = "tree-sitter-c" },
+    { name = "tree-sitter-c-sharp" },
+    { name = "tree-sitter-cpp" },
+    { name = "tree-sitter-css" },
+    { name = "tree-sitter-go" },
+    { name = "tree-sitter-html" },
+    { name = "tree-sitter-java" },
+    { name = "tree-sitter-javascript" },
+    { name = "tree-sitter-kotlin" },
+    { name = "tree-sitter-python" },
+    { name = "tree-sitter-ruby" },
+    { name = "tree-sitter-rust" },
+    { name = "tree-sitter-typescript" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anthropic", specifier = "==0.66.0" },
+    { name = "faiss-cpu", specifier = ">=1.7.0" },
+    { name = "fastmcp", specifier = ">=0.1.0" },
+    { name = "google-genai", specifier = ">=1.31.0" },
+    { name = "lightrag-hku", specifier = "==1.4.7" },
+    { name = "numpy", specifier = "==2.2.6" },
+    { name = "openai", specifier = ">=1.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "sentence-transformers", specifier = ">=3.0.1" },
+    { name = "tokenizers", specifier = ">=0.21.4" },
+    { name = "torch", specifier = "==2.8.0" },
+    { name = "transformers", specifier = "==4.56.1" },
+    { name = "tree-sitter", specifier = "==0.25.0" },
+    { name = "tree-sitter-c", specifier = "==0.24.1" },
+    { name = "tree-sitter-c-sharp", specifier = ">=0.23.1" },
+    { name = "tree-sitter-cpp", specifier = "==0.23.4" },
+    { name = "tree-sitter-css", specifier = ">=0.23.2" },
+    { name = "tree-sitter-go", specifier = "==0.23.4" },
+    { name = "tree-sitter-html", specifier = ">=0.23.2" },
+    { name = "tree-sitter-java", specifier = "==0.23.5" },
+    { name = "tree-sitter-javascript", specifier = "==0.23.1" },
+    { name = "tree-sitter-kotlin", specifier = ">=1.1.0" },
+    { name = "tree-sitter-python", specifier = "==0.23.6" },
+    { name = "tree-sitter-ruby", specifier = ">=0.23.1" },
+    { name = "tree-sitter-rust", specifier = "==0.24.0" },
+    { name = "tree-sitter-typescript", specifier = "==0.23.2" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.4.2" }]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2267,77 +2338,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/83/bf/4bed4d3d0570e16771defd5f8f15f7ea2311edcbe91077436d6908956c4a/regex-2025.9.1-cp314-cp314-win_amd64.whl", hash = "sha256:a1196e530a6bfa5f4bde029ac5b0295a6ecfaaffbfffede4bbaf4061d9455b70", size = 278742, upload-time = "2025-09-01T22:09:40.651Z" },
     { url = "https://files.pythonhosted.org/packages/cf/3e/7d7ac6fd085023312421e0d69dfabdfb28e116e513fadbe9afe710c01893/regex-2025.9.1-cp314-cp314-win_arm64.whl", hash = "sha256:f46d525934871ea772930e997d577d48c6983e50f206ff7b66d4ac5f8941e993", size = 271860, upload-time = "2025-09-01T22:09:42.413Z" },
 ]
-
-[[package]]
-name = "repo-graphrag-mcp"
-version = "0.2.2"
-source = { editable = "." }
-dependencies = [
-    { name = "anthropic" },
-    { name = "faiss-cpu" },
-    { name = "fastmcp" },
-    { name = "google-genai" },
-    { name = "lightrag-hku" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "python-dotenv" },
-    { name = "sentence-transformers" },
-    { name = "tokenizers" },
-    { name = "torch" },
-    { name = "transformers" },
-    { name = "tree-sitter" },
-    { name = "tree-sitter-c" },
-    { name = "tree-sitter-c-sharp" },
-    { name = "tree-sitter-cpp" },
-    { name = "tree-sitter-css" },
-    { name = "tree-sitter-go" },
-    { name = "tree-sitter-html" },
-    { name = "tree-sitter-java" },
-    { name = "tree-sitter-javascript" },
-    { name = "tree-sitter-kotlin" },
-    { name = "tree-sitter-python" },
-    { name = "tree-sitter-ruby" },
-    { name = "tree-sitter-rust" },
-    { name = "tree-sitter-typescript" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "anthropic", specifier = "==0.66.0" },
-    { name = "faiss-cpu", specifier = ">=1.7.0" },
-    { name = "fastmcp", specifier = ">=0.1.0" },
-    { name = "google-genai", specifier = ">=1.31.0" },
-    { name = "lightrag-hku", specifier = "==1.4.7" },
-    { name = "numpy", specifier = "==2.2.6" },
-    { name = "openai", specifier = ">=1.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "sentence-transformers", specifier = ">=3.0.1" },
-    { name = "tokenizers", specifier = ">=0.21.4" },
-    { name = "torch", specifier = "==2.8.0" },
-    { name = "transformers", specifier = "==4.56.1" },
-    { name = "tree-sitter", specifier = "==0.25.0" },
-    { name = "tree-sitter-c", specifier = "==0.24.1" },
-    { name = "tree-sitter-c-sharp", specifier = ">=0.23.1" },
-    { name = "tree-sitter-cpp", specifier = "==0.23.4" },
-    { name = "tree-sitter-css", specifier = ">=0.23.2" },
-    { name = "tree-sitter-go", specifier = "==0.23.4" },
-    { name = "tree-sitter-html", specifier = ">=0.23.2" },
-    { name = "tree-sitter-java", specifier = "==0.23.5" },
-    { name = "tree-sitter-javascript", specifier = "==0.23.1" },
-    { name = "tree-sitter-kotlin", specifier = ">=1.1.0" },
-    { name = "tree-sitter-python", specifier = "==0.23.6" },
-    { name = "tree-sitter-ruby", specifier = ">=0.23.1" },
-    { name = "tree-sitter-rust", specifier = "==0.24.0" },
-    { name = "tree-sitter-typescript", specifier = "==0.23.2" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.4.2" }]
 
 [[package]]
 name = "requests"

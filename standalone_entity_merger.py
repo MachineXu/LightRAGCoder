@@ -34,6 +34,7 @@ try:
         parallel_num, 
         code_ext_dict
     )
+    from repo_graphrag.utils.lock_manager import create_lock_file, remove_lock_file
     from lightrag import LightRAG
     
 except ImportError as e:
@@ -53,7 +54,15 @@ async def main():
     
     storage_path = original_argv[1]
     
+    lock_created = False
+    
     try:
+        # Create lock file to prevent concurrent updates
+        lock_created = create_lock_file(storage_path)
+        if not lock_created:
+            logger.error("Failed to acquire lock. Another process might be updating the storage.")
+            sys.exit(1)
+            
         logger.info(f"Initializing LightRAG with MCP settings: {storage_path}")
         logger.info(f"Merge threshold: {merge_score_threshold}")
         logger.info(f"Parallelism: {parallel_num}")
@@ -73,6 +82,10 @@ async def main():
         logger.error(f"An error occurred: {e}")
         logger.error(traceback.format_exc())
         sys.exit(1)
+    finally:
+        # Ensure lock file is removed
+        if lock_created:
+            remove_lock_file(storage_path)
        
 def is_unmerged_code_entity(entity_name: str, entity_file_path: str) -> bool:
     """

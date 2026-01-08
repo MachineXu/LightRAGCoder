@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "repo-graphrag-mcp"
-version = "0.2.2"
+name = "LightRAGCoder"
+version = "0.3.1"
 description = "GraphRAG-based MCP server: builds a repository knowledge graph (Tree-sitter + LightRAG) for Q&A and change planning."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -40,11 +40,14 @@ dependencies = [
 ]
 
 [project.scripts]
-repo-graphrag-mcp = "server:mcp.run"
+LightRAGCoder = "lightragcoder:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["repo_graphrag"]
 include = [
+    "lightragcoder.py",
+    "standalone_entity_merger.py",
+    "standalone_graph_creator.py",
     "server.py",
     "repo_graphrag/**/*",
 ]

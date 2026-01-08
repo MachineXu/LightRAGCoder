@@ -6,6 +6,7 @@ from lightrag import LightRAG
 from lightrag.utils import compute_mdhash_id
 from .initialization.initializer import initialize_rag
 from .utils.file_reader import read_dir
+from .utils.lock_manager import create_lock_file, remove_lock_file
 from .processors.document_processor import doc_to_storage
 from .processors.code_processor import code_to_storage
 from .processors.entity_merger import merge_doc_and_code
@@ -14,16 +15,25 @@ from .config.settings import merge_enabled
 
 logger = logging.getLogger(__name__)
 
-async def create_graph_storage(read_dir_path: str, storage_dir_path: str):
+async def create_graph_storage(read_dir_list: list, storage_dir_path: str):
     """
     Create or update GraphRAG storage.
 
     Args:
-        read_dir_path: Target directory path to read from
+        read_dir_list: Target directory paths to read from
         storage_dir_path: Storage directory path
+    
+    Raises:
+        RuntimeError: If a lock file already exists, indicating another process is updating the storage.
     """
     rag = None
+    lock_created = False
     try:
+        # Create lock file to prevent concurrent updates
+        lock_created = create_lock_file(storage_dir_path)
+        if not lock_created:
+            raise RuntimeError("GraphRAG storage is already being updated by another process. Please wait and try again later.")
+        
         # Initialize LightRAG
         rag = await initialize_rag(storage_dir_path)
 
@@ -32,7 +42,7 @@ async def create_graph_storage(read_dir_path: str, storage_dir_path: str):
         workspace_dir_path = os.path.join(storage_dir_path, storage_name + "_work")
 
         # Extract document and code files from the given directory
-        doc_dict, code_dict = read_dir(read_dir_path)
+        doc_dict, code_dict = read_dir(read_dir_list)
 
         # If storage exists, delete stale/out-of-scope entries and identify files to process this run
         current_process_doc_dict, current_process_code_dict = await _cleanup_and_prepare_documents(
@@ -40,7 +50,7 @@ async def create_graph_storage(read_dir_path: str, storage_dir_path: str):
             workspace_dir_path,
             doc_dict,
             code_dict,
-            read_dir_path
+            read_dir_list
         )
 
         # Chunk and graph documents (only the files to be processed this run)
@@ -59,6 +69,10 @@ async def create_graph_storage(read_dir_path: str, storage_dir_path: str):
         logger.error(f"An error occurred: {e}")
         raise
     finally:
+        # Remove lock file if we created it
+        if lock_created:
+            remove_lock_file(storage_dir_path)
+            
         if rag:
             await rag.finalize_storages()
             
@@ -76,7 +90,7 @@ async def _cleanup_and_prepare_documents(
     workspace_dir_path: str, 
     doc_dict: dict, 
     code_dict: dict, 
-    read_dir_path: str = None
+    read_dir_list: list = []
 )-> tuple[dict, dict]:
     """
     Delete stale/out-of-scope files from storage and determine the set of files to process in this run.
@@ -86,7 +100,7 @@ async def _cleanup_and_prepare_documents(
         workspace_dir_path: Workspace directory path
         doc_dict: Current document file dictionary
         code_dict: Current code file dictionary
-        read_dir_path: Target directory path to read from
+        read_dir_list: Target directory paths to read from
 
     Returns:
         tuple: (document_dict_to_process, code_dict_to_process)
@@ -125,8 +139,9 @@ async def _cleanup_and_prepare_documents(
             storage_chunk_file_path = storage_chunk_data["file_path"]
             storage_chunk_full_doc_id = storage_chunk_data["full_doc_id"]
             
-            # Files outside the target directory are treated as out-of-scope and deleted
-            if read_dir_path and not storage_chunk_file_path.startswith(read_dir_path):
+            # Files outside the target directories are treated as out-of-scope and deleted
+            is_in_scope = any(storage_chunk_file_path.startswith(read_dir) for read_dir in read_dir_list)
+            if not is_in_scope:
                 out_of_scope_docs.add(storage_chunk_full_doc_id)
                 continue
             
