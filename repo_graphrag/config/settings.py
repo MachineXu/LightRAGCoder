@@ -127,6 +127,12 @@ if use_hf_home_in_local:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     hf_path = os.path.join(current_dir, os.pardir, os.pardir, "hf_cache")
     os.environ['HF_HOME'] = hf_path
+
+use_tiktoken_cache = get_config_value("USE_TIKTOKEN_CACHE", None, bool)
+if use_tiktoken_cache:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_path = os.path.join(current_dir, os.pardir, os.pardir, "tiktoken_cache")
+    os.environ['TIKTOKEN_CACHE_DIR'] = cache_path
 # ==============================================================================
 # Performance Settings
 # ==============================================================================

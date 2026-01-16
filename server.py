@@ -1,6 +1,7 @@
 import os
 import gc
 import logging
+import storage_setting
 from logging.handlers import RotatingFileHandler
 from mcp.server.fastmcp import FastMCP
 from lightrag import QueryParam
@@ -96,6 +97,16 @@ async def graph_update() -> str:
             "stete": "Failed",
             "result": GRAPH_STORAGE_UPDATE_PROCESSING.format(storage_name=storage_name)
         }
+
+    # Read source directories from settings.json
+    if storage_dir_path:
+        source_dirs = storage_setting.get_source_dirs_from_settings(storage_dir_path)
+        if source_dirs:
+            read_dir_list = source_dirs
+            logger.info(f"Updated read_dir_list from settings: {read_dir_list}")
+        else:
+            logger.warning(f"No source directories found in settings.json")
+
     try:
         # Check if storage exists
         storage_exists = os.path.exists(storage_dir_path)

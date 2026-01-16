@@ -10,26 +10,27 @@ sys.executable = sys.executable
 def build_exe():
     # Project root directory
     project_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # Clean up previous build files
     dist_dir = os.path.join(project_dir, 'dist')
     build_dir = os.path.join(project_dir, 'build')
     spec_file = os.path.join(project_dir, 'lightragcoder.spec')
-    
+
     if os.path.exists(dist_dir):
         shutil.rmtree(dist_dir)
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
     if os.path.exists(spec_file):
         os.remove(spec_file)
-    
+
     print("Cleanup completed, starting EXE build...")
-    
+
     # PyInstaller build parameters
     pyinstaller_cmd = [
         sys.executable,
         '-m', 'PyInstaller',
-        '--onefile',  # Generate single EXE file
+        # '--onefile',  # Generate single EXE file
+        '--onedir',
         '--name', 'LightRAGCoder',  # Output file name
         '--hidden-import', 'asyncio',  # Ensure asyncio is included
         '--hidden-import', 'queue',  # Ensure queue module is included
@@ -37,6 +38,11 @@ def build_exe():
         '--hidden-import', 'mcp.server',  # Ensure mcp.server is included
         '--hidden-import', 'mcp.server.lowlevel',  # Ensure mcp.server.lowlevel is included
         '--hidden-import', 'mcp.server.lowlevel.server',  # Ensure mcp.server.lowlevel.server is included
+        '--hidden-import', 'lightrag.kg.faiss_impl',  # Ensure lightrag.kg.faiss_impl is included
+        '--hidden-import', 'lightrag.kg.shared_storage',  # Ensure lightrag.kg.shared_storage is included
+        '--hidden-import', 'lightrag.llm.hf',  # Ensure lightrag.llm.hf is included
+        '--hidden-import', 'lightrag.utils',  # Ensure lightrag.utils is included
+        '--hidden-import', 'lightrag.base',  # Ensure lightrag.base is included
         '--collect-submodules', 'importlib.metadata',  # Ensure importlib.metadata module is included
         '--collect-submodules', 'lightrag_hku',  # Ensure lightrag_hku module is included
         '--collect-submodules', 'tree_sitter',  # Ensure tree_sitter module is included
@@ -49,29 +55,64 @@ def build_exe():
         '--collect-submodules', 'tokenizers',  # Ensure tokenizers module is included
         '--collect-submodules', 'sentence_transformers',  # Ensure sentence_transformers module is included
         '--collect-submodules', 'faiss',  # Ensure faiss module is included
+        '--collect-submodules', 'tiktoken',  # Ensure tiktoken module is included
         '--console',  # Show console window for debugging
         '--clean',  # Clean temporary files
         os.path.join(project_dir, 'lightragcoder.py')  # Main script
     ]
-    
+
     # Execute PyInstaller build command
     try:
         subprocess.run(pyinstaller_cmd, check=True, shell=False)
+
         print(f"\nBuild successful! Executable file located at: {dist_dir}")
-        
+
         # Copy necessary resource files to dist directory
         print("Copying necessary resource files...")
-        
+
         # Check if .env.example needs to be copied
         env_example_src = os.path.join(project_dir, '.env.example')
-        env_example_dst = os.path.join(dist_dir, '.env.example')
+        env_example_dst = os.path.join(dist_dir, 'LightRAGCoder', '.env.example')
         if os.path.exists(env_example_src):
             shutil.copy2(env_example_src, env_example_dst)
-            print(f"Copied .env.example to {dist_dir}")
-        
+            print(f"Copied .env.example to {dist_dir}/LightRAGCoder")
+
+        internal_dir = os.path.join(dist_dir, 'LightRAGCoder', '_internal')
+
+        # Copy pyproject.toml for version information
+        pyproject_src = os.path.join(project_dir, 'pyproject.toml')
+        pyproject_dst = os.path.join(internal_dir, 'pyproject.toml')
+        if os.path.exists(pyproject_src):
+            shutil.copy2(pyproject_src, pyproject_dst)
+            print(f"Copied pyproject.toml to {internal_dir}")
+
+        # Copy tiktoken_ext directory from .venv\Lib\site-packages\tiktoken_ext
+        tiktoken_ext_src = os.path.join(project_dir, '.venv', 'Lib', 'site-packages', 'tiktoken_ext')
+        tiktoken_ext_dst = os.path.join(internal_dir, 'tiktoken_ext')
+        if os.path.exists(tiktoken_ext_src):
+            if os.path.exists(tiktoken_ext_dst):
+                shutil.rmtree(tiktoken_ext_dst)
+            shutil.copytree(tiktoken_ext_src, tiktoken_ext_dst)
+            print(f"Copied tiktoken_ext to {tiktoken_ext_dst}")
+        else:
+            print(f"Warning: tiktoken_ext source not found at {tiktoken_ext_src}")
+
+        # Copy tiktoken_cache and hf_cache directories to dist/LightRAGCoder/
+        cache_dirs = ['tiktoken_cache', 'hf_cache']
+        for cache_dir in cache_dirs:
+            cache_src = os.path.join(project_dir, cache_dir)
+            cache_dst = os.path.join(dist_dir, 'LightRAGCoder', cache_dir)
+            if os.path.exists(cache_src):
+                if os.path.exists(cache_dst):
+                    shutil.rmtree(cache_dst)
+                shutil.copytree(cache_src, cache_dst)
+                print(f"Copied {cache_dir} to {cache_dst}")
+            else:
+                print(f"Warning: {cache_dir} source not found at {cache_src}")
+
         # Prompt user build completion
         print("\n======== Build Completed ========")
-        print(f"Executable: {os.path.join(dist_dir, 'lightragcoder.exe')}")
+        print(f"Executable: {os.path.join(dist_dir, 'LightRAGCoder', 'LightRAGCoder.exe')}")
         print("\nUsage:")
         print("1. Copy lightragcoder.exe from dist directory to target machine")
         print("2. Ensure target machine has code directories to analyze")
@@ -82,7 +123,7 @@ def build_exe():
     except subprocess.CalledProcessError as e:
         print(f"Build failed: {e}")
         sys.exit(1)
-    
+
 if __name__ == '__main__':
     # Check if PyInstaller is installed, install if not
     try:
@@ -96,6 +137,6 @@ if __name__ == '__main__':
         except subprocess.CalledProcessError:
             print("PyInstaller installation failed, please install manually and run this script again")
             sys.exit(1)
-    
+
     # Execute build
     build_exe()
