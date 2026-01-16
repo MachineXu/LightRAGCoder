@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 - 2026-01-16
+
+### Added
+- Support storage settings.json
+- Support build to Windows executable
+- Support source directory list
+- Add OpenAI embedding model support
+
 ## 0.2.2 - 2025-10-04
 
 ### Added
