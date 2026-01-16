@@ -116,6 +116,19 @@ def run_mcp(args):
     server.storage_name = os.path.basename(server.storage_dir_path)
     logger.info(f"Storage directory: {server.storage_dir_path}")
 
+    # Build storage description information
+    settings = storage_setting.read_settings(args.storage_dir)
+    description = settings.get('description', '')
+    storage_name = settings.get('name', server.storage_name)
+
+    # Set storage_desc in server.py
+    server.storage_desc = f"""[Loaded Storage]
+  Name: {storage_name}
+  Description: {description}"""
+
+    # Register tools with the current storage description
+    server.register_dynamic_tools()
+
     # Run the server
     server.mcp.run(transport=args.mode)
 

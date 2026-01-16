@@ -65,10 +65,57 @@ rag = None
 read_dir_list = []
 storage_dir_path = None
 storage_name = None
+storage_desc = None
+
+# List to store pending tools for delayed registration
+pending_tools = []
 
 mcp = FastMCP("LightRAGCoder")
 
-@mcp.tool()
+def dynamic_tool(name=None, title=None, description=None, annotations=None, structured_output=None):
+    """Dynamic tool decorator that automatically adds storage information to description"""
+
+    def decorator(fn):
+        # Store tool information for delayed registration
+        global pending_tools
+        pending_tools.append({
+            'fn': fn,
+            'name': name,
+            'title': title,
+            'annotations': annotations,
+            'structured_output': structured_output
+        })
+        # Return the original function (not registered yet)
+        return fn
+    return decorator
+
+def register_dynamic_tools():
+    """Register all pending tools with the current storage description"""
+    global pending_tools, storage_desc, mcp
+
+    for tool_info in pending_tools:
+        fn = tool_info['fn']
+        # Build dynamic description: storage_desc + function docstring
+        if storage_desc:
+            # If storage_desc exists, combine into complete description
+            dynamic_description = storage_desc + "\n\n" + (fn.__doc__ or "")
+        else:
+            # If no storage_desc, use original docstring
+            dynamic_description = fn.__doc__ or ""
+
+        # Register with mcp.tool(), passing dynamic description
+        mcp.tool(
+            name=tool_info['name'],
+            title=tool_info['title'],
+            description=dynamic_description,
+            annotations=tool_info['annotations'],
+            structured_output=tool_info['structured_output']
+        )(fn)
+
+    # Clear pending tools after registration to avoid duplicate registration
+    pending_tools.clear()
+
+@dynamic_tool()
 async def graph_update() -> str:
     """
     Read documents and code update GraphRAG storage.
@@ -142,7 +189,7 @@ async def graph_update() -> str:
         if lock_created:
             remove_lock_file(storage_dir_path)
 
-@mcp.tool()
+@dynamic_tool()
 async def graph_plan(user_request: str) -> str:
     """
     A tool that returns a plan text for modification/addition requests.
@@ -232,7 +279,7 @@ async def graph_plan(user_request: str) -> str:
     
     return result_message
 
-@mcp.tool()
+@dynamic_tool()
 async def graph_query(user_query: str) -> str:
     """
     A tool that returns an answer text for a question.
@@ -325,4 +372,6 @@ if __name__ == "__main__":
     storage_dir_path = None
     mcp.settings.host="127.0.0.1"
     mcp.settings.port=8888
+    # Register all pending tools before running the server
+    register_dynamic_tools()
     mcp.run(transport="streamable-http")
