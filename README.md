@@ -13,6 +13,10 @@ It provides tools for graph update (`graph_update`), implementation planning (`g
   - [Table of Contents](#table-of-contents)
   - [🚀 Quick Start](#-quick-start)
     - [Prerequisites](#prerequisites)
+  - [🏗️ Building Windows Executable](#️-building-windows-executable)
+    - [Building the Executable](#building-the-executable)
+    - [Additional Build Options](#additional-build-options)
+    - [Notes](#notes)
   - [📦 CLI Tool - LightRAGCoder](#-cli-tool---lightragcoder)
     - [Available Commands](#available-commands)
       - [`mcp` - Run the LightRAGCoder Server](#mcp---run-the-lightragcoder-server)
@@ -43,8 +47,9 @@ It provides tools for graph update (`graph_update`), implementation planning (`g
       - [Retrieval/Search Modes](#retrievalsearch-modes)
       - [Token Budgets (Input-side)](#token-budgets-input-side)
     - [Entity Merge](#entity-merge)
+    - [Storage Settings](#storage-settings)
     - [Detailed Environment Variables](#detailed-environment-variables)
-  - [🧬 Supported Languages (v0.2.2)](#-supported-languages-v022)
+  - [🧬 Supported Languages (v0.3.1)](#-supported-languages-v031)
   - [🏗️ MCP Structure](#️-mcp-structure)
   - [🛠️ Standalone Execution](#️-standalone-execution)
     - [Using the CLI Tool (Recommended)](#using-the-cli-tool-recommended)
@@ -61,6 +66,28 @@ It provides tools for graph update (`graph_update`), implementation planning (`g
 - [uv](https://github.com/astral-sh/uv) package manager
 - Credentials for your chosen LLM provider (set the required environment variables; see the LLM Providers section below)
 
+## 🏗️ Building Windows Executable
+
+LightRAGCoder includes a build script to create a standalone Windows executable (.exe) using PyInstaller. This allows you to distribute and run LightRAGCoder without requiring Python installation.
+
+### Building the Executable
+
+```bash
+# Run the build script
+uv run build_exe.py
+```
+
+The build process will:
+1. Clean up previous build artifacts
+2. Install required dependencies via uv
+3. Create a standalone executable using PyInstaller
+4. Output the executable to the `dist/` directory
+
+### Notes
+- The executable includes all dependencies and can be run on Windows systems without Python installed
+- The first build may take several minutes as it compiles all dependencies
+- Ensure you have sufficient disk space for the build process
+
 ## 📦 CLI Tool - LightRAGCoder
 
 `LightRAGCoder` is a command-line interface that provides access to the core functionalities of LightRAGCoder. It offers three main commands:
@@ -69,28 +96,28 @@ It provides tools for graph update (`graph_update`), implementation planning (`g
 
 #### `mcp` - Run the LightRAGCoder Server
 
-Start the MCP (Model Context Protocol) server to interact with MCP clients like Claude Code or VS Code GitHub Copilot Extensions. Note: Requires an existing storage directory (create one first using the `create` command).
+Start the MCP (Model Context Protocol) server to interact with MCP clients like Claude Code or VS Code GitHub Copilot Extensions. Note: Requires an existing storage directory (create one first using the `build` command).
 
 ```bash
-LightRAGCoder mcp --source-dir <directory_paths> --storage-dir <storage_directory> --mode <transport_mode>
+LightRAGCoder mcp --storage-dir <storage_directory> --mode <transport_mode>
 ```
 
-- `--source-dir`: Comma-separated list of document or code directories to analyze (required)
 - `--storage-dir`: Storage directory path (required)
 - `--mode`: Server transport mode (`stdio` or `streamable-http`, default: `stdio`)
 
-#### `create` - Create/Update GraphRAG Storage manually
+#### `build` - Create/Update GraphRAG Storage manually
 
 Analyze the target repository/directory and build a knowledge graph and vector embedding index.
 
 ```bash
-LightRAGCoder create --source-dir <directory_paths> --storage-dir <storage_directory>
+LightRAGCoder build --source-dir <directory_paths> --storage-dir <storage_directory> --description <description>
 ```
 
 - `--source-dir`: Comma-separated list of document or code directories to analyze (required)
 - `--storage-dir`: Storage directory path (required)
+- `--description`: Description for the storage (required)
 
-#### `merge` - Merge Entities in GraphRAG Storage manually
+#### `merge` - Merge docs and code Entities in GraphRAG Storage manually
 
 Merge entities in an existing GraphRAG storage based on semantic similarity.
 
@@ -104,10 +131,10 @@ LightRAGCoder merge --storage-dir <storage_directory>
 
 ```bash
 # Run MCP server with multiple source directories
-LightRAGCoder mcp --source-dir /path/to/code,/path/to/docs --storage-dir /path/to/storage
+LightRAGCoder mcp --storage-dir /path/to/storage
 
 # Create a new knowledge graph
-LightRAGCoder create --source-dir /path/to/my/repository --storage-dir my_project_storage
+LightRAGCoder build --source-dir /path/to/my/repository --storage-dir my_project_storage --description "xxx module Storage"
 
 # Merge entities in an existing storage
 LightRAGCoder merge --storage-dir my_project_storage
@@ -115,15 +142,7 @@ LightRAGCoder merge --storage-dir my_project_storage
 
 ### 1. Installation
 
-Download pre_build version or clone sourc code and run in uv evnironment
-```bash
-# Clone from GitHub
-git clone https://github.com/MachineXu/LightRAGCoder.git
-cd LightRAGCoder
-
-# Install dependencies
-uv sync
-```
+Download pre_build version and dezip it
 
 ### 2. Environment Setup
 
@@ -176,8 +195,6 @@ EMBEDDING_MODEL_OPENAI_BASE_URL=http://localhost:1234/v1  # For LM Studio or oth
       "command": "LightRAGCoder",
       "args": [
         "mcp",
-        "--source-dir",
-        "/path/to/code,/path/to/docs",
         "--storage-dir",
         "/path/to/storage"
       ]
@@ -330,6 +347,21 @@ This MCP can merge entities extracted from documents with entities extracted fro
   - When enabled, merge runs within the graph creation/update flow (after entity extraction).
   - You can also run the standalone tool: `uv run standalone_entity_merger.py <storage_dir_path>`
 
+### Storage Settings
+
+LightRAGCoder supports persistent storage settings through a `settings.json` file in the storage directory. This allows you to maintain configuration across sessions and share settings between different instances.
+
+#### Settings File Location
+- `storage_dir/settings.json` - Automatically created and updated when using the storage directory
+
+#### Automatic Settings Management
+- Settings are automatically saved when creating or updating storage
+- Existing settings are loaded when accessing storage
+- Settings include: source directories, configuration parameters, and metadata
+
+#### Integration with CLI
+The CLI tool automatically uses storage settings when available, reducing the need to repeatedly specify source directories and other parameters.
+
 ### Detailed Environment Variables
 
 All environment variables and defaults can be configured by copying `.env.example` to `.env`.
@@ -385,7 +417,7 @@ Quick reference for all items
 | `MERGE_MIN_NAME_LENGTH` | Minimum entity name length for merge |
 | `MERGE_MAX_NAME_LENGTH` | Maximum entity name length for merge |
 
-## 🧬 Supported Languages (v0.2.2)
+## 🧬 Supported Languages (v0.3.1)
 
 The following 13 languages are supported:
 
@@ -410,57 +442,43 @@ LightRAGCoder/
 ├── README.md
 ├── CHANGELOG.md              # Changelog
 ├── LICENSE                   # License (MIT)
+├── .gitignore                # Git ignore rules
+├── .env.example              # Environment variable template
 ├── pyproject.toml            # Package settings
+├── uv.lock                   # UV lock file
 ├── lightragcoder.py          # CLI tool entrypoint
 ├── server.py                 # MCP server entrypoint
-├── .env.example              # Environment variable template
+├── build_exe.py              # Windows executable builder
+├── storage_setting.py        # Storage settings management
+├── standalone_graph_creator.py  # Standalone graph creation
+├── standalone_entity_merger.py  # Standalone entity merger
 ├── repo_graphrag/            # Package
 │   ├── config/               # Configuration
 │   ├── initialization/       # Initialization
 │   ├── llm/                  # LLM clients
+│   │   ├── __init__.py
+│   │   ├── llm_client.py
+│   │   ├── openai_client.py
+│   │   ├── anthropic_client.py
+│   │   ├── azure_openai_client.py
+│   │   ├── gemini_client.py
+│   │   └── openai_embedding.py
 │   ├── processors/           # Analysis/graph building
+│   │   ├── __init__.py
+│   │   ├── code_processor.py
+│   │   ├── code_chunker.py
+│   │   ├── code_grapher.py
+│   │   ├── document_processor.py
+│   │   └── entity_merger.py
 │   ├── utils/                # Utilities
+│   │   ├── __init__.py
+│   │   ├── file_reader.py
+│   │   ├── lock_manager.py
+│   │   ├── node_line_range.py
+│   │   └── rate_limiter.py
 │   ├── graph_storage_creator.py  # Storage creation
 │   └── prompts.py            # Prompts
-└── logs/                     # Log output
 ```
-
-## 🛠️ Standalone Execution
-
-You can also run without an MCP client:
-
-### Using the CLI Tool (Recommended)
-
-The recommended way to run standalone operations is using the CLI tool:
-
-#### Build Knowledge Graph
-
-```bash
-LightRAGCoder create --source-dir <read_dir_path> --storage-dir <storage_directory>
-```
-
-Examples:
-```bash
-LightRAGCoder create --source-dir /home/user/myproject --storage-dir my_storage
-LightRAGCoder create --source-dir C:\projects\webapp\source,C:\projects\webapp\doc --storage-dir webapp_storage
-```
-
-#### Merge Entities
-
-If MERGE_ENABLED=true is set in the .env file, this step is unnecessary as entity merging will be performed automatically during graph creation.
-
-```bash
-LightRAGCoder merge --storage-dir <storage_dir_path>
-```
-
-Examples:
-```bash
-LightRAGCoder merge --storage-dir /home/user/myproject/my_storage
-LightRAGCoder merge --storage-dir C:\\projects\\webapp/webapp_storage
-```
-
-Note:
-- The storage directory must be created beforehand by `LightRAGCoder create`.
 
 ## 🙏 Acknowledgments
 
