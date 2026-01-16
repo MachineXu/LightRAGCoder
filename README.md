@@ -456,26 +456,8 @@ LightRAGCoder/
 │   ├── config/               # Configuration
 │   ├── initialization/       # Initialization
 │   ├── llm/                  # LLM clients
-│   │   ├── __init__.py
-│   │   ├── llm_client.py
-│   │   ├── openai_client.py
-│   │   ├── anthropic_client.py
-│   │   ├── azure_openai_client.py
-│   │   ├── gemini_client.py
-│   │   └── openai_embedding.py
 │   ├── processors/           # Analysis/graph building
-│   │   ├── __init__.py
-│   │   ├── code_processor.py
-│   │   ├── code_chunker.py
-│   │   ├── code_grapher.py
-│   │   ├── document_processor.py
-│   │   └── entity_merger.py
 │   ├── utils/                # Utilities
-│   │   ├── __init__.py
-│   │   ├── file_reader.py
-│   │   ├── lock_manager.py
-│   │   ├── node_line_range.py
-│   │   └── rate_limiter.py
 │   ├── graph_storage_creator.py  # Storage creation
 │   └── prompts.py            # Prompts
 ```
