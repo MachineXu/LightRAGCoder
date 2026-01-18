@@ -3,11 +3,11 @@ import logging
 import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, Tuple
+from ..config.settings import code_ext_dict, parallel_num
 from tree_sitter import Parser
 from lightrag import LightRAG
 from lightrag.utils import compute_mdhash_id
 from lightrag.base import DocStatus
-from ..config.settings import code_ext_dict, parallel_num
 from .code_chunker import create_code_chunks
 from .code_grapher import create_code_graph
 from ..utils.node_line_range import get_node_line_range, build_line_offset_list

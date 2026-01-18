@@ -2,15 +2,15 @@ import gc
 import logging
 import os
 import json
+from .initialization.initializer import initialize_rag
+from .config.settings import merge_enabled
 from lightrag import LightRAG
 from lightrag.utils import compute_mdhash_id
-from .initialization.initializer import initialize_rag
 from .utils.file_reader import read_dir
 from .utils.lock_manager import create_lock_file, remove_lock_file
 from .processors.document_processor import doc_to_storage
 from .processors.code_processor import code_to_storage
 from .processors.entity_merger import merge_doc_and_code
-from .config.settings import merge_enabled
 
 
 logger = logging.getLogger(__name__)

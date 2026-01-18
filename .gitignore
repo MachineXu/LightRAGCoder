@@ -30,3 +30,9 @@ Thumbs.db
 
 # dist
 dist*/
+
+# PyInstaller
+build/
+*.spec
+__pycache__/
+

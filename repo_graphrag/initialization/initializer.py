@@ -1,13 +1,6 @@
 import gc
 import os
 import asyncio
-from lightrag import LightRAG
-from transformers import AutoModel, AutoTokenizer
-from lightrag.utils import EmbeddingFunc
-from lightrag.llm.hf import hf_embed
-from lightrag.kg.shared_storage import initialize_pipeline_status
-from ..llm.llm_client import complete_graph_create
-from ..llm.openai_embedding import openai_embed
 from ..config.settings import (
     parallel_num,
     graph_create_max_token_size,
@@ -19,8 +12,17 @@ from ..config.settings import (
     llm_model_max_async,
     embedding_func_max_async,
     document_definition_list,
-    huggingface_hub_token
+    huggingface_hub_token,
+    hf_hub_offline,
+    hf_hub_cache
 )
+from lightrag import LightRAG
+from transformers import AutoModel, AutoTokenizer
+from lightrag.utils import EmbeddingFunc
+from lightrag.llm.hf import hf_embed
+from lightrag.kg.shared_storage import initialize_pipeline_status
+from ..llm.llm_client import complete_graph_create
+from ..llm.openai_embedding import openai_embed
 
 
 _emb_model = None
@@ -80,7 +82,11 @@ async def _load_embedding_components():
             # For OpenAI provider, we don't need to load local models
             # Set them to None to indicate we're using OpenAI API
             _emb_model = None
-            _tokenizer = await asyncio.to_thread(AutoTokenizer.from_pretrained, embedding_tokenizer_model_name)
+            if not hf_hub_offline:
+                _tokenizer = await asyncio.to_thread(AutoTokenizer.from_pretrained, embedding_tokenizer_model_name)
+                _tokenizer.save_pretrained(hf_hub_cache + "/" + embedding_tokenizer_model_name)
+            else:
+                _tokenizer = await asyncio.to_thread(AutoTokenizer.from_pretrained, hf_hub_cache + "/" + embedding_tokenizer_model_name)
 
 
             # Import OpenAI embedding function

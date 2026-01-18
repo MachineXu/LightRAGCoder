@@ -1,8 +1,8 @@
 import logging
 import asyncio
 from typing import Dict, List, Tuple, Union
-from lightrag import LightRAG
 from ..config.settings import parallel_num
+from lightrag import LightRAG
 
 
 logger = logging.getLogger(__name__)

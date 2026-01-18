@@ -101,7 +101,7 @@ def build_exe():
         cache_dirs = ['tiktoken_cache', 'hf_cache']
         for cache_dir in cache_dirs:
             cache_src = os.path.join(project_dir, cache_dir)
-            cache_dst = os.path.join(dist_dir, 'LightRAGCoder', cache_dir)
+            cache_dst = os.path.join(internal_dir, cache_dir)
             if os.path.exists(cache_src):
                 if os.path.exists(cache_dst):
                     shutil.rmtree(cache_dst)

@@ -5,7 +5,6 @@ import fnmatch
 import numpy as np
 import faiss
 from typing import Optional, Dict, Any, List, Tuple
-from lightrag import LightRAG
 from ..config.settings import (
     parallel_num,
     merge_score_threshold,
@@ -18,6 +17,7 @@ from ..config.settings import (
     test_related_exclude_list,
     embedding_batch_size
 )
+from lightrag import LightRAG
 
 
 logger = logging.getLogger(__name__)

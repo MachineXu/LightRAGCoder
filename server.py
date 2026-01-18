@@ -3,8 +3,6 @@ import gc
 import logging
 import storage_setting
 from logging.handlers import RotatingFileHandler
-from mcp.server.fastmcp import FastMCP
-from lightrag import QueryParam
 from repo_graphrag.config.settings import (
     search_top_k,
     search_mode,
@@ -12,6 +10,8 @@ from repo_graphrag.config.settings import (
     entity_max_tokens,
     relation_max_tokens,
 )
+from mcp.server.fastmcp import FastMCP
+from lightrag import QueryParam
 from repo_graphrag.initialization.initializer import initialize_rag
 from repo_graphrag.graph_storage_creator import create_graph_storage
 from repo_graphrag.utils.lock_manager import create_lock_file, remove_lock_file, check_lock_file_exists
@@ -116,32 +116,31 @@ def register_dynamic_tools():
     pending_tools.clear()
 
 @dynamic_tool()
-async def graph_update() -> str:
+async def graph_update() -> dict:
     """
     Read documents and code update GraphRAG storage.
     Always call this tool when instructions request graph update for a project.
-    
+
     Args: None
-        
+
     Returns:
-        str: Result message
+        dict: {"state": "SUCCESS"|"Failed", "result": str}
     """
 
     # Declare global variables at the beginning of the function
     global storage_name
     global storage_dir_path
     global read_dir_list
-    
+
     log_newline()
     logging.getLogger().info("=" * 80)
     logging.getLogger().info("graph_update tool start")
     logging.getLogger().info("=" * 80)
 
-    # Check if update is already in progress
-    lock_created = create_lock_file(storage_dir_path)
-    if not lock_created:
+    # Check if update is in progress
+    if check_lock_file_exists(storage_dir_path):
         return {
-            "stete": "Failed",
+            "state": "Failed",
             "result": GRAPH_STORAGE_UPDATE_PROCESSING.format(storage_name=storage_name)
         }
 
@@ -158,39 +157,38 @@ async def graph_update() -> str:
         # Check if storage exists
         storage_exists = os.path.exists(storage_dir_path)
         action = "updated" if storage_exists else "created"
-        
+
         # Create graph storage
         await create_graph_storage(read_dir_list, storage_dir_path)
-        
+
         result_message = GRAPH_STORAGE_RESULT_TEMPLATE.format(
-            read_dir_path=read_dir_list, 
-            storage_dir_path=storage_dir_path, 
+            read_dir_path=read_dir_list,
+            storage_dir_path=storage_dir_path,
             action=action
         )
-        
+
         logger.info("")
         logging.getLogger().info("=" * 80)
         logging.getLogger().info("graph_update tool completed")
         logging.getLogger().info("=" * 80)
         log_newline()
-        return result_message
-    
+        return {"state": "SUCCESS", "result": result_message}
+
     except Exception as e:
         error_message = GENERAL_ERROR_TEMPLATE.format(error=str(e))
-        
+
         logger.info("")
         logging.getLogger().error("=" * 80)
-        logging.getLogger().error("graph_create tool error")
+        logging.getLogger().error("graph_update tool error")
         logging.getLogger().error("=" * 80)
         log_newline()
-        return error_message
+        return {"state": "Failed", "result": error_message}
     finally:
         # Ensure lock file is removed
-        if lock_created:
-            remove_lock_file(storage_dir_path)
+        pass
 
 @dynamic_tool()
-async def graph_plan(user_request: str) -> str:
+async def graph_plan(user_request: str) -> dict:
     """
     A tool that returns a plan text for modification/addition requests.
     Always call this tool when instructions with modifications/additions/fixes/changes/new feature requests.
@@ -198,7 +196,7 @@ async def graph_plan(user_request: str) -> str:
     Args: 
         user_request (str) = Modifications/additions/fixes/changes/newrequest (exclude unrelated text)
 
-    Returns: str = Implementation plan text
+    Returns dict: state, query and Plan text
         - Steps for "Preparation", "Design", and "Implementation"
         - Notes
         
@@ -221,7 +219,7 @@ async def graph_plan(user_request: str) -> str:
     # Check if update is in progress
     if check_lock_file_exists(storage_dir_path):
         return {
-            "stete": "Failed",
+            "state": "Failed",
             "result": GRAPH_STORAGE_UPDATE_PROCESSING.format(storage_name=storage_name)
         }
 
@@ -234,7 +232,7 @@ async def graph_plan(user_request: str) -> str:
         logging.getLogger().error("=" * 80)
         log_newline()
         
-        return STORAGE_NOT_FOUND_ERROR_TEMPLATE.format(storage_name=storage_name)
+        return {"state": "Failed", "result": STORAGE_NOT_FOUND_ERROR_TEMPLATE.format(storage_name=storage_name)}
 
     CREATE_PLAN_PROMPT = PLAN_PROMPT_TEMPLATE.format(user_request=user_request)
 
@@ -280,7 +278,7 @@ async def graph_plan(user_request: str) -> str:
     return result_message
 
 @dynamic_tool()
-async def graph_query(user_query: str) -> str:
+async def graph_query(user_query: str) -> dict:
     """
     A tool that returns an answer text for a question.
     Always call this tool when instructions and a question is asked.
@@ -289,7 +287,7 @@ async def graph_query(user_query: str) -> str:
         user_query (str) = Question (exclude unrelated text)
     
     Returns:
-        str: Answer text
+        dict: state, query and Answer text
         
     Examples:
         - "Tell me the process in the design document"
@@ -310,7 +308,7 @@ async def graph_query(user_query: str) -> str:
     # Check if update is in progress
     if check_lock_file_exists(storage_dir_path):
         return {
-            "stete": "Failed",
+            "state": "Failed",
             "result": GRAPH_STORAGE_UPDATE_PROCESSING.format(storage_name=storage_name)
         }
 
@@ -323,7 +321,7 @@ async def graph_query(user_query: str) -> str:
         logging.getLogger().error("=" * 80)
         log_newline()
         
-        return STORAGE_NOT_FOUND_ERROR_TEMPLATE.format(storage_name=storage_name)
+        return {"state": "Failed", "result": STORAGE_NOT_FOUND_ERROR_TEMPLATE.format(storage_name=storage_name)}
 
     rag = await initialize_rag(storage_dir_path)
     query_param = QueryParam(

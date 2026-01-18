@@ -122,15 +122,12 @@ if embedding_model_provider == "openai" and not (embedding_model_openai_api_key 
 # Optional Hugging Face Hub token (for authenticated/private models)
 huggingface_hub_token = get_config_value("HUGGINGFACE_HUB_TOKEN", None, str)
 
-use_hf_home_in_local = get_config_value("USE_HF_HOME_IN_LOCAL", None, bool)
-if use_hf_home_in_local:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    hf_path = os.path.join(current_dir, os.pardir, os.pardir, "hf_cache")
-    os.environ['HF_HOME'] = hf_path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+hf_hub_cache = os.path.join(current_dir, os.pardir, os.pardir, "hf_cache", "hub")
+hf_hub_offline = get_config_value("HF_HUB_OFFLINE", None, bool)
 
 use_tiktoken_cache = get_config_value("USE_TIKTOKEN_CACHE", None, bool)
 if use_tiktoken_cache:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
     cache_path = os.path.join(current_dir, os.pardir, os.pardir, "tiktoken_cache")
     os.environ['TIKTOKEN_CACHE_DIR'] = cache_path
 # ==============================================================================

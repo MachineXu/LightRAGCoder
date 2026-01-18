@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import argcomplete
 import asyncio
 import logging
 from pathlib import Path
@@ -94,6 +95,7 @@ def parse_args(args=None):
     # version command
     subparsers.add_parser('version', help='Show program version')
 
+    argcomplete.autocomplete(parser)
     return parser.parse_args(args)
 
 def run_mcp(args):
