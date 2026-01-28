@@ -259,8 +259,8 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
         nonlocal stored_count
         logger.info("Storage worker: Started")
 
-        while True:
-            try:
+        try:
+            while True:
                 # Get next result to store
                 result = await storage_queue.get()
 
@@ -284,15 +284,18 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
                 finally:
                     storage_queue.task_done()
 
-            except asyncio.CancelledError:
-                logger.info("Storage worker: Cancelled")
-                break
-            except Exception as e:
-                logger.error(f"Storage worker: Unexpected error: {e}")
-                break
-
-        logger.info("Storage worker: Finished")
-        storage_done.set()
+            # Only set storage_done when exiting normally
+            logger.info("Storage worker: Finished normally")
+            storage_done.set()
+            
+        except asyncio.CancelledError:
+            logger.info("Storage worker: Cancelled")
+            # Set storage_done when cancelled
+            storage_done.set()
+        except Exception as e:
+            logger.error(f"Storage worker: Unexpected error: {e}")
+            # Do NOT set storage_done on unexpected errors
+            # This ensures progress_reporter can detect the failure
 
     # Start the processing pipeline
     logger.info(f"Starting processing pipeline with {parallel_num} workers")
@@ -305,9 +308,27 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
 
     # Progress reporting task
     async def progress_reporter() -> None:
-        """Periodically report processing progress."""
+        """Periodically report processing progress and check for storage task failures."""
         while not processing_done.is_set() or not storage_done.is_set():
             await asyncio.sleep(20)  # Report every 20 seconds
+            
+            # Check if storage task has completed with an exception
+            if storage_task.done():
+                storage_exception = storage_task.exception()
+                if storage_exception is not None:
+                    logger.error(f"Storage task failed with exception: {storage_exception}")
+                    logger.error(f"Progress at error: {processed_count}/{total_files} processed, {stored_count}/{total_files} stored")
+                    
+                    # Cancel all tasks except progress reporter itself
+                    # (It will be terminated when we raise the exception)
+                    for task in worker_tasks:
+                        task.cancel()
+                    producer_task.cancel()
+                    
+                    logger.error("Cancelling all tasks due to storage task failure")
+                    # Re-raise the storage exception
+                    raise storage_exception
+            
             if not processing_done.is_set():
                 logger.info(f"Progress: {processed_count}/{total_files} files processed")
             if not storage_done.is_set():

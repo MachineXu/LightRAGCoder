@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 from tree_sitter import Language
 import tree_sitter_python as tspython
@@ -16,8 +17,29 @@ import tree_sitter_c_sharp as tscsharp
 import tree_sitter_kotlin as tskotlin
 
 
-# Load .env file
-load_dotenv()
+# Load .env file from multiple locations
+# 1. First try to load from the executable directory
+# 2. Then try to load from the current working directory (higher priority)
+
+# Get the path of the current executable or script
+if getattr(sys, 'frozen', False):
+    # If running as a compiled executable
+    exe_dir = os.path.dirname(sys.executable)
+else:
+    # If running as a normal Python script
+    exe_dir = os.path.dirname(os.path.abspath(__file__))
+    # Go up two levels to the project root directory
+    exe_dir = os.path.join(exe_dir, os.pardir, os.pardir)
+
+# Load .env from executable directory (if exists)
+env_path_executable = os.path.join(exe_dir, '.env')
+if os.path.exists(env_path_executable):
+    load_dotenv(env_path_executable)
+
+# Load .env from current working directory (higher priority - will override existing variables)
+env_path_cwd = os.path.join(os.getcwd(), '.env')
+if os.path.exists(env_path_cwd):
+    load_dotenv(env_path_cwd, override=True)
 
 # Helper: get env var and cast to type
 def get_config_value(key: str, default="__REQUIRED__", var_type=str):
@@ -114,6 +136,7 @@ embedding_model_openai_base_url = get_config_value("EMBEDDING_MODEL_OPENAI_BASE_
 embedding_model_name = get_config_value("EMBEDDING_MODEL_NAME", "BAAI/bge-m3", str)
 embedding_tokenizer_model_name = get_config_value("EMBEDDING_TOKENIZER_MODEL_NAME", "BAAI/bge-m3", str)
 embedding_dim = get_config_value("EMBEDDING_DIM", "1024", int)
+embedding_support_custom_dim = get_config_value("EMBEDDING_SUPPORT_CUSTOM_DIM", "false", bool)
 embedding_max_token_size = get_config_value("EMBEDDING_MAX_TOKEN_SIZE", "2048", int)
 
 if embedding_model_provider == "openai" and not (embedding_model_openai_api_key or embedding_model_openai_base_url):

@@ -3,7 +3,8 @@ from ..config.settings import (
     embedding_model_openai_base_url,
     embedding_model_name,
     rate_limit_error_wait_time,
-    embedding_dim
+    embedding_dim,
+    embedding_support_custom_dim
 )
 from ..utils.rate_limiter import get_rate_limiter
 from typing import List
@@ -52,12 +53,18 @@ async def openai_embed(texts: List[str]) -> np.ndarray:
     try:
         # Apply rate limiting for API calls
         async with get_rate_limiter():
-            response = await _openai_embedding_client.embeddings.create(
-                model=embedding_model_name,
-                input=texts,
-                encoding_format="float",
-                dimensions = embedding_dim
-            )
+            # Create embedding request parameters
+            embed_params = {
+                "model": embedding_model_name,
+                "input": texts,
+                "encoding_format": "float"
+            }
+            
+            # Only include dimensions if the model supports custom dimensions
+            if embedding_support_custom_dim:
+                embed_params["dimensions"] = embedding_dim
+            
+            response = await _openai_embedding_client.embeddings.create(**embed_params)
 
         all_embeddings = [data.embedding for data in response.data]
 
@@ -69,11 +76,18 @@ async def openai_embed(texts: List[str]) -> np.ndarray:
             for text in texts:
                 try:
                     async with get_rate_limiter():
-                        response = await _openai_embedding_client.embeddings.create(
-                            model=embedding_model_name,
-                            input=[text],
-                            encoding_format="float"
-                        )
+                        # Create embedding request parameters for fallback
+                        embed_params = {
+                            "model": embedding_model_name,
+                            "input": [text],
+                            "encoding_format": "float"
+                        }
+                        
+                        # Only include dimensions if the model supports custom dimensions
+                        if embedding_support_custom_dim:
+                            embed_params["dimensions"] = embedding_dim
+                        
+                        response = await _openai_embedding_client.embeddings.create(**embed_params)
                     all_embeddings.append(response.data[0].embedding)
                 except Exception as inner_e:
                     logger.error(f"Failed to embed individual text: {inner_e}")

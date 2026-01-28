@@ -115,7 +115,7 @@ def register_dynamic_tools():
     # Clear pending tools after registration to avoid duplicate registration
     pending_tools.clear()
 
-@dynamic_tool()
+# @dynamic_tool()
 async def graph_update() -> dict:
     """
     Read documents and code update GraphRAG storage.
