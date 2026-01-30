@@ -67,9 +67,9 @@ def parse_args(args=None):
                                       help='Available commands')
 
     # Common arguments shared between commands
-    def add_source_dir_arg(parser):
-        parser.add_argument('--source-dir', required=False,
-                          help='Comma-separated list of document or code directories')
+    def add_source_arg(parser):
+        parser.add_argument('--source', required=False,
+                          help='Comma-separated list of source files or directories')
 
     def add_storage_dir_arg(parser, required=True):
         parser.add_argument('--storage-dir', required=required,
@@ -83,7 +83,7 @@ def parse_args(args=None):
 
     # build command
     build_parser = subparsers.add_parser('build', help='Create or update GraphRAG storage')
-    add_source_dir_arg(build_parser)
+    add_source_arg(build_parser)
     add_storage_dir_arg(build_parser, required=True)
     build_parser.add_argument('--description', required=False,
                           help='Description of the GraphRAG storage')
@@ -143,10 +143,18 @@ def run_build(args):
     settings = storage_setting.read_settings(storage_dir)
 
     # 2. Determine parameter values: prioritize command line arguments, use settings values when missing
-    # Get source directories list: from command line or existing settings
-    if args.source_dir:
+    # Get source paths list: from command line or existing settings
+    if args.source:
         # Command line provides comma-separated string, convert to list
-        source_dirs = [str(Path(path.strip().replace('\\', '/')).as_posix()) for path in args.source_dir.split(',')]
+        source_paths = []
+        for path_str in args.source.split(','):
+            path_str = path_str.strip()
+            if not path_str:
+                continue
+
+            # Use original path string, no normalization
+            source_paths.append(path_str)
+        source_dirs = source_paths
     else:
         # Get from settings
         source_dirs = storage_setting.get_source_dirs_from_settings(storage_dir)
@@ -157,7 +165,7 @@ def run_build(args):
     # 3. Validate required parameters
     missing_params = []
     if not source_dirs:
-        missing_params.append('--source-dir')
+        missing_params.append('--source')
     if not description:
         missing_params.append('--description')
     if not storage_dir:
@@ -165,7 +173,7 @@ def run_build(args):
 
     if missing_params:
         logger.error(f"The following parameters are missing, please specify via command line: {', '.join(missing_params)}")
-        logger.error(f"Example: lightragcoder build --source-dir /path/to/source --description 'project description' --storage-dir /path/to/storage")
+        logger.error(f"Example: lightragcoder build --source /path/to/source --description 'project description' --storage-dir /path/to/storage")
         sys.exit(1)
 
     # 4. Check if settings need to be updated

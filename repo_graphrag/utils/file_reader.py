@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 def read_dir(read_dir_list: list) -> Tuple[Dict[str, str], Dict[str, bytes]]:
     """
-    Traverse a directory and collect files to process.
+    Traverse directories or process individual files.
 
     Args:
-        read_dir_list: Target directory path to read
+        read_dir_list: List of target directory paths or file paths to read
 
     Returns:
         tuple: (doc_dict, code_dict) - Dictionaries for document files and code files
@@ -34,54 +34,105 @@ def read_dir(read_dir_list: list) -> Tuple[Dict[str, str], Dict[str, bytes]]:
     # Special files without extensions to include
     special_files = set(doc_ext_dict.get("special_files", []))
 
-    # Recursively traverse each directory in the list
-    for read_dir_path in read_dir_list:
-        for dir_path, dir_names, file_name_list in os.walk(read_dir_path):
-            # Exclude directories in the no-process list
-            for no_process in no_process_file_list:
-                if no_process in dir_names:
-                    dir_names.remove(no_process)
-                    logger.info(f"Excluded directory: {os.path.join(dir_path, no_process)}")
-                    
-            for file_name in file_name_list:
-                # Skip files in the no-process list
-                if file_name in no_process_file_list:
-                    logger.info(f"Excluded file: {os.path.join(dir_path, file_name)}")
-                    continue
+    # Process each path in the list (can be directory or file)
+    for path in read_dir_list:
+        if os.path.isfile(path):
+            # Process single file
+            file_path = path
+            file_name = os.path.basename(file_path)
+            dir_path = os.path.dirname(file_path)
 
-                # Extract extension
-                _, ext = os.path.splitext(file_name)
-                ext_without_dot = ext.lstrip(".")
-                
-                # Lowercase filename to check special files
-                file_name_lower = file_name.lower()
-                is_special_file = file_name_lower in special_files
+            # Skip files in the no-process list
+            if file_name in no_process_file_list:
+                logger.info(f"Excluded file: {file_path}")
+                continue
 
-                # Skip files that are neither allowed extension nor special files
-                if ext_without_dot not in allow_ext_set and not is_special_file:
-                    continue
+            # Extract extension
+            _, ext = os.path.splitext(file_name)
+            ext_without_dot = ext.lstrip(".")
 
-                # Build absolute file path
-                file_path = os.path.join(dir_path, file_name)
+            # Lowercase filename to check special files
+            file_name_lower = file_name.lower()
+            is_special_file = file_name_lower in special_files
 
-                # Read file content into dictionaries
-                if ext_without_dot in code_ext_dict:
-                    with open(file_path, "rb") as file:
-                        code_dict[file_path] = file.read()
-                    logger.info(f"Code file: {file_path}")
-                elif ext_without_dot in doc_ext_dict["text_file"] or is_special_file:
+            # Skip files that are neither allowed extension nor special files
+            if ext_without_dot not in allow_ext_set and not is_special_file:
+                continue
+
+            # Read file content into dictionaries
+            if ext_without_dot in code_ext_dict:
+                with open(file_path, "rb") as file:
+                    code_dict[file_path] = file.read()
+                logger.info(f"Code file: {file_path}")
+            elif ext_without_dot in doc_ext_dict["text_file"] or is_special_file:
+                try:
+                    with open(file_path, "r", encoding="utf-8") as file:
+                        doc_dict[file_path] = file.read()
+                    logger.info(f"Text file: {file_path}")
+                except UnicodeDecodeError:
+                    # Try alternative encodings when UTF-8 fails
                     try:
-                        with open(file_path, "r", encoding="utf-8") as file:
+                        with open(file_path, "r", encoding="shift_jis") as file:
                             doc_dict[file_path] = file.read()
-                        logger.info(f"Text file: {file_path}")
+                        logger.info(f"Text file (Shift_JIS): {file_path}")
                     except UnicodeDecodeError:
-                        # Try alternative encodings when UTF-8 fails
+                        logger.warning(f"Skipping due to encoding error: {file_path}")
+
+        elif os.path.isdir(path):
+            # Recursively traverse directory
+            for dir_path, dir_names, file_name_list in os.walk(path):
+                # Exclude directories in the no-process list
+                for no_process in no_process_file_list:
+                    if no_process in dir_names:
+                        dir_names.remove(no_process)
+                        logger.info(f"Excluded directory: {os.path.join(dir_path, no_process)}")
+
+                for file_name in file_name_list:
+                    # Skip files in the no-process list
+                    if file_name in no_process_file_list:
+                        logger.info(f"Excluded file: {os.path.join(dir_path, file_name)}")
+                        continue
+
+                    # Extract extension
+                    _, ext = os.path.splitext(file_name)
+                    ext_without_dot = ext.lstrip(".")
+
+                    # Lowercase filename to check special files
+                    file_name_lower = file_name.lower()
+                    is_special_file = file_name_lower in special_files
+
+                    # Skip files that are neither allowed extension nor special files
+                    if ext_without_dot not in allow_ext_set and not is_special_file:
+                        continue
+
+                    # Build absolute file path
+                    file_path = os.path.join(dir_path, file_name)
+
+                    # Read file content into dictionaries
+                    if ext_without_dot in code_ext_dict:
+                        with open(file_path, "rb") as file:
+                            code_dict[file_path] = file.read()
+                        logger.info(f"Code file: {file_path}")
+                    elif ext_without_dot in doc_ext_dict["text_file"] or is_special_file:
                         try:
-                            with open(file_path, "r", encoding="shift_jis") as file:
+                            with open(file_path, "r", encoding="utf-8") as file:
                                 doc_dict[file_path] = file.read()
-                            logger.info(f"Text file (Shift_JIS): {file_path}")
+                            logger.info(f"Text file: {file_path}")
                         except UnicodeDecodeError:
-                            logger.warning(f"Skipping due to encoding error: {file_path}")
+                            # Try alternative encodings when UTF-8 fails
+                            try:
+                                with open(file_path, "r", encoding="shift_jis") as file:
+                                    doc_dict[file_path] = file.read()
+                                logger.info(f"Text file (Shift_JIS): {file_path}")
+                            except UnicodeDecodeError:
+                                logger.warning(f"Skipping due to encoding error: {file_path}")
+        else:
+            # Path is neither file nor directory (may not exist or be inaccessible)
+            if not os.path.exists(path):
+                logger.warning(f"Path does not exist, skipping: {path}")
+            else:
+                logger.warning(f"Path is neither file nor directory (may be special file), skipping: {path}")
+            continue
 
     logger.info("=" * 50 + "\n")
 

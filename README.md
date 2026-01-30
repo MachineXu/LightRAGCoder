@@ -110,10 +110,10 @@ LightRAGCoder mcp --storage-dir <storage_directory> --mode <transport_mode>
 Analyze the target repository/directory and build a knowledge graph and vector embedding index.
 
 ```bash
-LightRAGCoder build --source-dir <directory_paths> --storage-dir <storage_directory> --description <description>
+LightRAGCoder build --source <source_paths> --storage-dir <storage_directory> --description <description>
 ```
 
-- `--source-dir`: Comma-separated list of document or code directories to analyze (required)
+- `--source`: Comma-separated list of source files or directories to analyze (required)
 - `--storage-dir`: Storage directory path (required)
 - `--description`: Description for the storage (required)
 
@@ -134,7 +134,7 @@ LightRAGCoder merge --storage-dir <storage_directory>
 LightRAGCoder mcp --storage-dir /path/to/storage
 
 # Create a new knowledge graph
-LightRAGCoder build --source-dir /path/to/my/repository --storage-dir my_project_storage --description "xxx module Storage"
+LightRAGCoder build --source /path/to/my/repository --storage-dir my_project_storage --description "xxx module Storage"
 
 # Merge entities in an existing storage
 LightRAGCoder merge --storage-dir my_project_storage

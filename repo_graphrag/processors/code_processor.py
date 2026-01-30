@@ -195,6 +195,8 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
     # Event to signal completion
     processing_done = asyncio.Event()
     storage_done = asyncio.Event()
+    # Event to signal cancellation due to storage failure
+    cancelled_event = asyncio.Event()
 
     async def producer() -> None:
         """Producer coroutine: put all files into processing queue."""
@@ -280,7 +282,7 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
                 except Exception as e:
                     logger.error(f"Storage worker: Error storing {result['file_path']}: {e}")
                     # Re-raise to stop processing on critical errors
-                    raise
+                    raise e
                 finally:
                     storage_queue.task_done()
 
@@ -296,6 +298,7 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
             logger.error(f"Storage worker: Unexpected error: {e}")
             # Do NOT set storage_done on unexpected errors
             # This ensures progress_reporter can detect the failure
+            raise e
 
     # Start the processing pipeline
     logger.info(f"Starting processing pipeline with {parallel_num} workers")
@@ -318,6 +321,9 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
                 if storage_exception is not None:
                     logger.error(f"Storage task failed with exception: {storage_exception}")
                     logger.error(f"Progress at error: {processed_count}/{total_files} processed, {stored_count}/{total_files} stored")
+
+                    # Set cancellation event to signal all workers to stop
+                    cancelled_event.set()
                     
                     # Cancel all tasks except progress reporter itself
                     # (It will be terminated when we raise the exception)
@@ -338,22 +344,35 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
     progress_task = asyncio.create_task(progress_reporter())
 
     try:
-        # Wait for processing to complete
-        await processing_done.wait()
+        # Wait for processing to complete OR cancellation due to storage failure
+        # Use wait() to wait for either processing_done or cancelled_event
+        done, pending = await asyncio.wait(
+            [asyncio.create_task(processing_done.wait()), asyncio.create_task(cancelled_event.wait())],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+
+        # Check which event completed first
+        if cancelled_event.is_set():
+            logger.error("Cancellation detected while waiting for processing to complete")
+            # Storage has failed, raise an exception to exit
+            raise RuntimeError("Processing cancelled due to storage failure")
+
+        # Otherwise, processing completed normally
         processing_time = datetime.now(timezone.utc)
         logger.info(f"All files processed ({processed_count}/{total_files}) in {(processing_time - start_time).total_seconds():.2f} seconds")
 
-        # Signal storage worker to stop
-        await storage_queue.put(None)
+        # Signal storage worker to stop (if not already stopped by failure)
+        if not cancelled_event.is_set():
+            await storage_queue.put(None)
 
-        # Wait for storage to complete
-        await storage_done.wait()
-        storage_time = datetime.now(timezone.utc)
-        logger.info(f"All files stored ({stored_count}/{total_files}) in {(storage_time - processing_time).total_seconds():.2f} seconds")
+            # Wait for storage to complete
+            await storage_done.wait()
+            storage_time = datetime.now(timezone.utc)
+            logger.info(f"All files stored ({stored_count}/{total_files}) in {(storage_time - processing_time).total_seconds():.2f} seconds")
 
-        # Calculate total time
-        total_time = datetime.now(timezone.utc)
-        logger.info(f"Total processing time: {(total_time - start_time).total_seconds():.2f} seconds")
+            # Calculate total time
+            total_time = datetime.now(timezone.utc)
+            logger.info(f"Total processing time: {(total_time - start_time).total_seconds():.2f} seconds")
 
     except Exception as e:
         logger.error(f"Processing pipeline error: {e}")
@@ -373,6 +392,10 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
     finally:
         # Cancel progress reporter
         progress_task.cancel()
+        for task in worker_tasks:
+            task.cancel()
+        storage_task.cancel()
+        producer_task.cancel()
 
         # Wait for all tasks to complete
         results = await asyncio.gather(
@@ -384,16 +407,32 @@ async def code_to_storage(rag: LightRAG, code_dict: Dict[str, bytes]) -> None:
         )
 
         # Check for exceptions in tasks
+        critical_exception = None
         for i, result in enumerate(results):
             if isinstance(result, Exception):
+                # Ignore CancelledError - these are expected when tasks are cancelled
+                if isinstance(result, asyncio.CancelledError):
+                    continue
+
                 if i < len(worker_tasks):
                     logger.warning(f"Worker {i} raised exception: {result}")
                 elif i == len(worker_tasks):
-                    logger.warning(f"Storage worker raised exception: {result}")
+                    # Storage worker exception is critical - should cause process to fail
+                    logger.error(f"Storage worker raised critical exception: {result}")
+                    if critical_exception is None:
+                        critical_exception = result
                 elif i == len(worker_tasks) + 1:
                     logger.warning(f"Producer raised exception: {result}")
                 else:
-                    logger.warning(f"Progress reporter raised exception: {result}")
+                    # Progress reporter exception is critical (it re-raises storage exceptions)
+                    logger.error(f"Progress reporter raised critical exception: {result}")
+                    if critical_exception is None:
+                        critical_exception = result
+
+    # If we have a critical exception (storage failure), re-raise it
+    if critical_exception is not None:
+        logger.error(f"Re-raising critical exception from processing: {critical_exception}")
+        raise critical_exception
 
     # Verify completion
     if processed_count == total_files and stored_count == total_files:

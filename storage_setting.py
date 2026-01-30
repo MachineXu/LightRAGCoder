@@ -110,13 +110,13 @@ def validate_required_settings(storage_dir: str, required_keys: List[str] = None
     return missing_keys
 
 def get_source_dirs_from_settings(storage_dir: str) -> List[str]:
-    """Get source directories list from settings.json
+    """Get source paths list from settings.json (supports both files and directories)
 
     Args:
         storage_dir: Storage directory path
 
     Returns:
-        List of source directories with normalized paths, empty list if setting doesn't exist
+        List of source paths (files or directories), empty list if setting doesn't exist
     """
     source_dir_value = get_setting(storage_dir, 'source_dir', [])
     if isinstance(source_dir_value, str):
@@ -127,8 +127,8 @@ def get_source_dirs_from_settings(storage_dir: str) -> List[str]:
     else:
         return []
 
-    # Normalize paths to use forward slashes
-    return [str(Path(path.replace('\\', '/')).as_posix()) for path in dirs]
+    # Return original paths, no normalization
+    return dirs
 
 def create_default_settings(storage_dir: str, name: str = None, description: str = None, source_dir: Union[str, List[str], None] = None) -> bool:
     """Create default settings
@@ -137,7 +137,7 @@ def create_default_settings(storage_dir: str, name: str = None, description: str
         storage_dir: Storage directory path
         name: Storage name
         description: Storage description
-        source_dir: Source directories (string or list)
+        source_dir: Source paths (files or directories, string or list)
 
     Returns:
         True if successful, False if failed
@@ -153,8 +153,8 @@ def create_default_settings(storage_dir: str, name: str = None, description: str
     else:
         source_dir_list = []
 
-    # Normalize paths before storing
-    source_dir_list = [str(Path(path.replace('\\', '/')).as_posix()) for path in source_dir_list]
+    # Store original paths, no normalization
+    # source_dir_list already contains the paths
 
     default_settings = {
         'name': name,
